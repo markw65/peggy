@@ -1,0 +1,22 @@
+{
+  "name": "@markw65/peggy-optimizer",
+  "version": "1.0.0",
+  "description": "Peggy plugin to produce optimized js",
+  "main": "build/index.js",
+  "scripts": {
+    "prepack":"npm run rollup",
+    "rollup": "rollup --config rollup.config.mjs",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": [],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/markw65/peggy.git"
+  },
+  "author": "markw65",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/markw65/peggy/issues"
+  },
+  "homepage": "https://github.com/markw65/peggy/tree/peggy-optimizer/optimizer-plugin"
+}
