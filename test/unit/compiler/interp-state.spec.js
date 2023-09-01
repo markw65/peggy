@@ -7,56 +7,65 @@ const op = require("../../../lib/compiler/opcodes");
 
 const expect = chai.expect;
 
-describe("class InterpState", () => {
+/**
+ * @typedef {import("../../../lib/compiler/interp-state").FlatOpcodes} FlatOpcodes
+ * @typedef {import("../../../lib/compiler/interp-state").FormattedBytecode} FormattedBytecode
+ */
+
+describe("class |InterpState|", () => {
   describe("for an empty stack", () => {
     const state = new InterpState("empty");
+    /** @param {number[]} bc */
+    function run(bc) {
+      return state.clone().run(InterpState.formatBytecode(bc));
+    }
 
     describe("throws an error when attempting", () => {
       it("`POP_CURR_POS`", () => {
-        expect(() => state.clone().run([op.POP_CURR_POS])).to.throw(
+        expect(() => run([op.POP_CURR_POS])).to.throw(
           RangeError,
           "Rule 'empty': Trying to pop from an empty stack."
         );
       });
 
       it("`POP`", () => {
-        expect(() => state.clone().run([op.POP])).to.throw(
+        expect(() => run([op.POP])).to.throw(
           RangeError,
           "Rule 'empty': Trying to pop 1 elements, but only 0 available."
         );
       });
 
       it("`POP_N`", () => {
-        expect(() => state.clone().run([op.POP_N, 5])).to.throw(
+        expect(() => run([op.POP_N, 5])).to.throw(
           RangeError,
           "Rule 'empty': Trying to pop 5 elements, but only 0 available."
         );
-        expect(() => state.clone().run([op.PUSH_NULL, op.POP_N, 5])).to.throw(
+        expect(() => run([op.PUSH_NULL, op.POP_N, 5])).to.throw(
           RangeError,
           "Rule 'empty': Trying to pop 5 elements, but only 1 available."
         );
       });
 
       it("`WRAP`", () => {
-        expect(() => state.clone().run([op.WRAP, 2])).to.throw(
+        expect(() => run([op.WRAP, 2])).to.throw(
           RangeError,
           "Rule 'empty': Trying to pop 2 elements, but only 0 available."
         );
       });
 
       it("`PLUCK`", () => {
-        expect(() => state.clone().run([op.PLUCK, 3, 1, 2])).to.throw(
+        expect(() => run([op.PLUCK, 3, 1, 2])).to.throw(
           RangeError,
           "Rule 'empty': Trying to inspect element 2 in a stack of size 0"
         );
         expect(
-          () => state.clone().run([op.PUSH_NULL, op.PLUCK, 3, 1, 0])
+          () => run([op.PUSH_NULL, op.PLUCK, 3, 1, 0])
         ).to.throw(
           RangeError,
           "Rule 'empty': Trying to pop 3 elements, but only 1 available."
         );
         expect(
-          () => state.clone().run([op.PUSH_NULL, op.PLUCK, -3, 1, 0])
+          () => run([op.PUSH_NULL, op.PLUCK, -3, 1, 0])
         ).to.throw(
           RangeError,
           "Rule 'empty': Trying to discard -3 elements."
@@ -64,14 +73,14 @@ describe("class InterpState", () => {
       });
 
       it("`APPEND`", () => {
-        expect(() => state.clone().run([op.PUSH_NULL, op.APPEND, 2])).to.throw(
+        expect(() => run([op.PUSH_NULL, op.APPEND, 2])).to.throw(
           RangeError,
           "Rule 'empty': Trying to access the top of an empty stack."
         );
       });
 
       it("`IF`", () => {
-        expect(() => state.clone().run([op.IF])).to.throw(
+        expect(() => run([op.IF])).to.throw(
           RangeError,
           "Rule 'empty': Trying to access the top of an empty stack."
         );
@@ -83,7 +92,7 @@ describe("class InterpState", () => {
     const state = new InterpState("rule");
     it("throws an error when attempting to merge inconsistent states", () => {
       const state2 = state.clone();
-      state2.run([op.PUSH_NULL]);
+      state2.run([[op.PUSH_NULL]]);
 
       expect(() => state2.merge(state)).to.throw(
         Error,
@@ -91,7 +100,7 @@ describe("class InterpState", () => {
       );
 
       const state3 = state.clone();
-      state3.run([op.SILENT_FAILS_ON]);
+      state3.run([[op.SILENT_FAILS_ON]]);
 
       expect(() => state3.merge(state)).to.throw(
         Error,
@@ -107,7 +116,14 @@ describe("class InterpState", () => {
         `Expected a conditional bytecode, but got: ${op.PUSH_NULL}.`
       );
 
-      expect(() => state.clone().interp([-1], 0)).to.throw(
+      expect(() => InterpState.formatBytecode([-1])).to.throw(
+        Error,
+        "Invalid opcode: -1."
+      );
+
+      expect(() => state.clone().interp(
+        [[/** @type {FlatOpcodes} */(-1)]], 0
+      )).to.throw(
         Error,
         "rule: Invalid opcode: -1."
       );
@@ -124,7 +140,7 @@ describe("class InterpState", () => {
 
     it("throws when trying to pop an invalid value into currPos", () => {
       expect(
-        () => state.clone().run([op.PUSH_NULL, op.POP_CURR_POS])
+        () => state.clone().run([[op.PUSH_NULL], [op.POP_CURR_POS]])
       ).to.throw(
         Error,
         "Rule 'rule': Invalid value assigned to currPos."
@@ -133,7 +149,7 @@ describe("class InterpState", () => {
 
     it("APPEND gets an ARRAY", () => {
       expect(() => state.clone().run(
-        [op.PUSH_NULL, op.PUSH_EMPTY_STRING, op.APPEND]
+        [[op.PUSH_NULL], [op.PUSH_EMPTY_STRING], [op.APPEND]]
       )).to.throw(
         Error,
         "Rule 'rule': Attempting to append to a non-array."
@@ -142,7 +158,7 @@ describe("class InterpState", () => {
 
     it("TEXT gets an OFFSET", () => {
       expect(() => state.clone().run(
-        [op.PUSH_NULL, op.TEXT]
+        [[op.PUSH_NULL], [op.TEXT]]
       )).to.throw(
         Error,
         `Rule 'rule': TEXT bytecode got an incorrect type: ${TypeTag.NULL}.`
@@ -153,12 +169,83 @@ describe("class InterpState", () => {
       jest.spyOn(InterpState, "mustBeTrue").mockReturnValue(true);
       jest.spyOn(InterpState, "mustBeFalse").mockReturnValue(true);
       expect(
-        () => state.clone().run([op.PUSH_NULL, op.IF, 1, 1, op.POP, op.POP])
+        () => state.clone().run([
+          [op.PUSH_NULL],
+          [op.IF, [[op.POP]], [[op.POP]]],
+        ])
       ).to.throw(
         Error,
         "Rule 'rule': Conditional cannot be both always true and always false."
       );
       jest.resetAllMocks();
+    });
+
+    /** @param {unknown} badBc */
+    function flattenBad(badBc) {
+      return InterpState.flattenBc(
+        /** @type{FormattedBytecode} */ (badBc)
+      );
+    }
+    it("throws an error when trying to flatten improperly formatted bytecode 1", () => {
+      expect(() => flattenBad([[
+        op.IF, [
+          [op.POP],
+        ],
+        op.POP,
+      ]])).to.throw(
+        Error,
+        "Incorrect formatted bytecode. Expected an Array"
+      );
+    });
+
+    it("throws an error when trying to flatten improperly formatted bytecode 2", () => {
+      expect(() => flattenBad([
+        [
+          op.IF, [
+            [op.POP],
+          ],
+        ],
+      ])).to.throw(
+        Error,
+        `Incorrect formatted bytecode. Expected '${
+          op.WHILE_NOT_ERROR
+        }', but got ${op.IF}`
+      );
+    });
+
+    it("throws an error when trying to flatten improperly formatted bytecode 3", () => {
+      expect(() => flattenBad([
+        [
+          op.IF, 1, 2, 3, [
+            [op.POP],
+          ], [
+            [op.POP],
+          ],
+        ],
+      ])).to.throw(
+        Error,
+        `Incorrect formatted bytecode. Expected 0 arguments for ${
+          op.IF}, but got 3`
+      );
+    });
+
+    it("throws an error when trying to flatten improperly formatted bytecode 4", () => {
+      expect(() => flattenBad([
+        [
+          op.IF, [
+            [op.POP],
+          ], [
+            [op.POP],
+          ], [
+            [op.POP],
+          ],
+        ],
+      ])).to.throw(
+        Error,
+        `Incorrect formatted bytecode. Expected 2 bodies for ${
+          op.IF
+        }, but got 3`
+      );
     });
   });
 
@@ -168,28 +255,32 @@ describe("class InterpState", () => {
       expect(state.currPos.value).to.not.equal(undefined);
 
       let state2 = state.clone();
+      /** @param {number[]} bc */
+      function run(bc) {
+        return state2.run(InterpState.formatBytecode(bc));
+      }
       expect(state2.currPos.value).to.equal(state.currPos.value);
-      state2.run([op.ACCEPT_N, 0]);
+      run([op.ACCEPT_N, 0]);
       expect(state2.currPos.value).to.not.equal(state.currPos.value);
 
       state2 = state.clone();
-      state2.run([op.RULE, 0]);
+      run([op.RULE, 0]);
       expect(state2.currPos.value).to.not.equal(state.currPos.value);
 
       state2 = state.clone();
-      state2.run([op.CALL, 0, 0]);
+      run([op.CALL, 0, 0, 0]);
       expect(state2.currPos.value).to.not.equal(state.currPos.value);
 
       state2 = state.clone();
       state2.postInterp = function(bc, ip, result) {
-        if (bc[ip] === op.ACCEPT_N) {
+        if (bc[ip][0] === op.ACCEPT_N) {
           expect(this.currPos.value).to.not.equal(state.currPos.value);
-        } else if (bc[ip] === op.FAIL) {
+        } else if (bc[ip][0] === op.FAIL) {
           expect(this.currPos.value).to.equal(state.currPos.value);
         }
         return result;
       };
-      state2.run([op.MATCH_STRING, 1, 2, 2, op.ACCEPT_N, 0, op.FAIL, 0]);
+      run([op.MATCH_STRING, 1, 2, 2, op.ACCEPT_N, 0, op.FAIL, 0]);
       expect(state2.currPos.value).to.not.equal(state.currPos.value);
     });
 
@@ -200,20 +291,28 @@ describe("class InterpState", () => {
 
   describe("transformation", () => {
     const state = new InterpState("rule");
+    /** @param {number[]} bc */
+    function run(bc) {
+      const fbc = InterpState.formatBytecode(bc);
+      return state.clone().run(fbc)
+        ? InterpState.flattenBc(fbc)
+        : null;
+    }
+
     it("reduces always true ifs to then clause", () => {
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_EMPTY_ARRAY,
         op.IF, 2, 2,
         /* */ op.ACCEPT_N, 1,
         /* */ op.FAIL, 1,
       ])).to.deep.equal([op.PUSH_EMPTY_ARRAY, op.ACCEPT_N, 1]);
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_FAILED,
         op.IF_ERROR, 2, 2,
         /* */ op.ACCEPT_N, 1,
         /* */ op.FAIL, 1,
       ])).to.deep.equal([op.PUSH_FAILED, op.ACCEPT_N, 1]);
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_NULL,
         op.IF_NOT_ERROR, 2, 2,
         /* */ op.ACCEPT_N, 1,
@@ -221,19 +320,19 @@ describe("class InterpState", () => {
       ])).to.deep.equal([op.PUSH_NULL, op.ACCEPT_N, 1]);
     });
     it("reduces always false ifs to else clause", () => {
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_NULL,
         op.IF, 2, 2,
         /* */ op.ACCEPT_N, 1,
         /* */ op.FAIL, 1,
       ])).to.deep.equal([op.PUSH_NULL, op.FAIL, 1]);
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_NULL,
         op.IF_ERROR, 2, 2,
         /* */ op.ACCEPT_N, 1,
         /* */ op.FAIL, 1,
       ])).to.deep.equal([op.PUSH_NULL, op.FAIL, 1]);
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_FAILED,
         op.IF_NOT_ERROR, 2, 2,
         /* */ op.ACCEPT_N, 1,
@@ -242,7 +341,7 @@ describe("class InterpState", () => {
     });
 
     it("removes never executed loops", () => {
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_FAILED,
         op.WHILE_NOT_ERROR, 2,
         /* */ op.POP,
@@ -251,7 +350,7 @@ describe("class InterpState", () => {
     });
 
     it("iterates to convergence before modifying code", () => {
-      expect(state.clone().run([
+      expect(run([
         op.PUSH_NULL,
         op.WHILE_NOT_ERROR, 7,
         /* */ op.IF, 2, 2,
@@ -277,12 +376,14 @@ describe("class InterpState", () => {
 
     it("source mapping bytecodes", () => {
       const state = new InterpState("rule");
-      expect(state.run([
-        op.SOURCE_MAP_PUSH, 0,
-        op.SOURCE_MAP_POP,
-        op.SOURCE_MAP_LABEL_PUSH, 0, 0, 0,
-        op.SOURCE_MAP_LABEL_POP,
-      ])).to.equal(null);
+      expect(state.run(InterpState.formatBytecode(
+        [
+          op.SOURCE_MAP_PUSH, 0,
+          op.SOURCE_MAP_POP,
+          op.SOURCE_MAP_LABEL_PUSH, 0, 0, 0,
+          op.SOURCE_MAP_LABEL_POP,
+        ]
+      ))).to.equal(false);
     });
 
     it("equality tests", () => {

@@ -2,77 +2,14 @@
 "use strict";
 
 const chai = require("chai");
-// X const { TypeTag, InterpState } = require("../../../../lib/compiler/interp-state");
 const op = require("../../../../lib/compiler/opcodes");
 const { optimizeBlock } = require("../../../../lib/compiler/passes/optimize-bytecode");
 const { InterpState } = require("../../../../lib/compiler/interp-state");
 
 const expect = chai.expect;
 
-/**
- * @typedef {[number, FormattedBytecode, FormattedBytecode]} Cond0Element
- * @typedef {[number, number, FormattedBytecode, FormattedBytecode]} Cond1Element
- * @typedef {[number, FormattedBytecode]} LoopElement
- * @typedef {number[]|Cond0Element|Cond1Element|LoopElement} FormattedElement
- * @typedef {FormattedElement[]} FormattedBytecode
- */
-
-/**
- *
- * @param {FormattedBytecode} fbc
- * @returns {number[]}
- */
-function flattenBc(fbc) {
-  /** @type {number[]} */
-  const result = [];
-  fbc.forEach(e => {
-    for (let i = 0; i < e.length; i++) {
-      const x = e[i];
-      if (Array.isArray(x)) {
-        const bodies = e.slice(i).map(b => {
-          if (!Array.isArray(b)) {
-            throw new Error(
-              "Incorrect formatted bytecode. Expected an Array"
-            );
-          }
-          return flattenBc(b);
-        });
-        if (bodies.length === 1) {
-          if (e[0] !== op.WHILE_NOT_ERROR) {
-            throw new Error(
-              `Incorrect formatted bytecode. Expected '${
-                op.WHILE_NOT_ERROR
-              }', but got ${e[0]}`
-            );
-          }
-        } else {
-          const args = InterpState.getConditionalArgCount(e[0]);
-          if (i !== args + 1) {
-            throw new Error(
-              `Incorrect formatted bytecode. Expected ${
-                args
-              } arguments for ${e[0]}, but got ${bodies.length}`
-            );
-          }
-          if (bodies.length !== 2) {
-            throw new Error(
-              `Incorrect formatted bytecode. Expected 2 bodies for ${
-                e[0]
-              }, but got ${bodies.length}`
-            );
-          }
-        }
-        bodies.forEach(b => result.push(b.length));
-        bodies.forEach(b => result.push(...b));
-        break;
-      }
-      result.push(x);
-    }
-  });
-  return result;
-}
-
 describe("compiler pass |optimizeBytecode|", () => {
+  const flattenBc = InterpState.flattenBc;
   describe("combine consecutive ifs", () => {
     it("conditional => op.IF no swap", () => {
       expect(optimizeBlock(flattenBc([
