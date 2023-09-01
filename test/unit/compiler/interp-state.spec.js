@@ -370,7 +370,7 @@ describe("class |InterpState|", () => {
         .replace(/stack:.*/g, "")
         .replace(/\s+/g, " ")
         .trim()).to.equal(
-        "MATCH_CHAR_CLASS ACCEPT_N -- FAIL --"
+        "MATCH_CHAR_CLASS (0) ACCEPT_N (1) -- FAIL (1) --"
       );
     });
 
