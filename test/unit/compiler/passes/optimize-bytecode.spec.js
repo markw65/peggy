@@ -182,6 +182,214 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
   });
+  describe("combine consecutive ifs with second else empty", () => {
+    it("conditional => op.IF no swap", () => {
+      expect(optimizeBlock(flattenBc([
+        [
+          op.MATCH_CHAR_CLASS, 0, [
+            [op.PUSH_CURR_POS],
+          ], [
+            [op.PUSH_NULL],
+          ],
+        ],
+        [
+          op.IF, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]), "combine-with-IF")).to.deep.equal(flattenBc([
+        [
+          op.MATCH_CHAR_CLASS, 0, [
+            [op.PUSH_CURR_POS],
+            [
+              op.IF, [
+                [op.ACCEPT_N, 1],
+                [op.POP],
+              ], [],
+            ],
+          ], [
+            [op.PUSH_NULL],
+          ],
+        ],
+      ]));
+    });
+    it("conditional => op.IF swapped", () => {
+      expect(optimizeBlock(flattenBc([
+        [
+          op.MATCH_CHAR_CLASS, 0, [
+            [op.PUSH_NULL],
+          ], [
+            [op.PUSH_CURR_POS],
+          ],
+        ],
+        [
+          op.IF, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]), "combine-with-IF")).to.deep.equal(flattenBc([
+        [
+          op.MATCH_CHAR_CLASS, 0, [
+            [op.PUSH_NULL],
+          ], [
+            [op.PUSH_CURR_POS],
+            [
+              op.IF, [
+                [op.ACCEPT_N, 1],
+                [op.POP],
+              ], [],
+            ],
+          ],
+        ],
+      ]));
+    });
+    it("conditional => op.IF no merge", () => {
+      const codes = flattenBc([
+        [
+          op.MATCH_CHAR_CLASS, 0, [
+            [op.CALL, 0, 0, 0],
+          ], [
+            [op.PUSH_CURR_POS],
+          ],
+        ],
+        [
+          op.IF, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]);
+      expect(optimizeBlock(codes, "combine-with-IF")).to.deep.equal(codes);
+    });
+
+    it("conditional => op.IF_ERROR no swap", () => {
+      expect(optimizeBlock(flattenBc([
+        [
+          op.MATCH_STRING, 0, [
+            [op.RULE, 0],
+          ], [
+            [op.PUSH_NULL],
+          ],
+        ],
+        [
+          op.IF_ERROR, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]), "combine-with-IF_ERROR")).to.deep.equal(flattenBc([
+        [
+          op.MATCH_STRING, 0, [
+            [op.RULE, 0],
+            [
+              op.IF_ERROR, [
+                [op.ACCEPT_N, 1],
+                [op.POP],
+              ], [],
+            ],
+          ], [
+            [op.PUSH_NULL],
+          ],
+        ],
+      ]));
+    });
+    it("conditional => op.IF_ERROR swapped", () => {
+      expect(optimizeBlock(flattenBc([
+        [
+          op.MATCH_STRING, 0, [
+            [op.PUSH_NULL],
+          ], [
+            [op.RULE, 0],
+          ],
+        ],
+        [
+          op.IF_ERROR, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]), "combine-with-IF_ERROR")).to.deep.equal(flattenBc([
+        [
+          op.MATCH_STRING, 0, [
+            [op.PUSH_NULL],
+          ], [
+            [op.RULE, 0],
+            [
+              op.IF_ERROR, [
+                [op.ACCEPT_N, 1],
+                [op.POP],
+              ], [],
+            ],
+          ],
+        ],
+      ]));
+    });
+
+    it("conditional => op.IF_NOT_ERROR no swap", () => {
+      expect(optimizeBlock(flattenBc([
+        [
+          op.MATCH_STRING_IC, 0, [
+            [op.PUSH_FAILED],
+          ], [
+            [op.RULE, 0],
+          ],
+        ],
+        [
+          op.IF_NOT_ERROR, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]), "combine-with-IF_NOT_ERROR")).to.deep.equal(flattenBc([
+        [
+          op.MATCH_STRING_IC, 0, [
+            [op.PUSH_FAILED],
+          ], [
+            [op.RULE, 0],
+            [
+              op.IF_NOT_ERROR, [
+                [op.ACCEPT_N, 1],
+                [op.POP],
+              ], [],
+            ],
+          ],
+        ],
+      ]));
+    });
+    it("conditional => op.IF_NOT_ERROR swapped", () => {
+      expect(optimizeBlock(flattenBc([
+        [
+          op.MATCH_STRING_IC, 0, [
+            [op.RULE, 0],
+          ], [
+            [op.PUSH_FAILED],
+          ],
+        ],
+        [
+          op.IF_NOT_ERROR, [
+            [op.ACCEPT_N, 1],
+            [op.POP],
+          ], [],
+        ],
+      ]), "combine-with-IF_NOT_ERROR")).to.deep.equal(flattenBc([
+        [
+          op.MATCH_STRING_IC, 0, [
+            [op.RULE, 0],
+            [
+              op.IF_NOT_ERROR, [
+                [op.ACCEPT_N, 1],
+                [op.POP],
+              ], [],
+            ],
+          ], [
+            [op.PUSH_FAILED],
+          ],
+        ],
+      ]));
+    });
+  });
   describe("Optimize FAIL opcodes", () => {
     it("to PUSH_FAILURE when SILENT_FAILS is on", () => {
       expect(optimizeBlock([
