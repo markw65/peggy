@@ -429,6 +429,46 @@ describe("compiler pass |optimizeBytecode|", () => {
         op.POP_N, 4,
       ], "dead-push-pops")).to.deep.equal([]);
     });
+    it("NIP/POP => POP", () => {
+      expect(optimizeBlock([
+        op.PUSH_FAILED,
+        op.PUSH_NULL,
+        op.PUSH_CURR_POS,
+        op.POP_CURR_POS,
+        op.NIP,
+        op.POP,
+      ], "dead-nip-pops")).to.deep.equal([]);
+    });
+    it("PUSH/NIP => POP/PUSH", () => {
+      expect(optimizeBlock([
+        op.PUSH_FAILED,
+        op.PUSH_NULL,
+        op.NIP,
+      ], "dead-push-nips")).to.deep.equal([op.PUSH_NULL]);
+    });
+    it("PLUCK n/POP => POP_N/POP", () => {
+      expect(optimizeBlock([
+        op.PUSH_FAILED,
+        op.PUSH_NULL,
+        op.PUSH_EMPTY_ARRAY,
+        op.PLUCK, 3, 1, 1,
+        op.POP,
+      ], "dead-pluck-popn")).to.deep.equal([]);
+    });
+    it("PLUCK 1/POP => POP", () => {
+      expect(optimizeBlock([
+        op.PUSH_FAILED,
+        op.PLUCK, 1, 1, 0,
+        op.POP,
+      ], "dead-pluck-pop1")).to.deep.equal([]);
+    });
+    it("PLUCK 0/POP => PUSH_NULL/POP", () => {
+      expect(optimizeBlock([
+        op.PUSH_FAILED,
+        op.PLUCK, 0, 1, 0,
+        op.POP,
+      ], "dead-pluck-pop0")).to.deep.equal([op.PUSH_FAILED]);
+    });
   });
   describe("kill useless POP_CURR_POS", () => {
     it("when currPos is unchanged", () => {
