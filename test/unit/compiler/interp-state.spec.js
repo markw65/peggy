@@ -17,7 +17,7 @@ describe("class |InterpState|", () => {
     const state = new InterpState("empty");
     /** @param {number[]} bc */
     function run(bc) {
-      return state.clone().run(InterpState.formatBytecode(bc));
+      state.clone().run(InterpState.formatBytecode(bc));
     }
 
     describe("throws an error when attempting", () => {
@@ -257,7 +257,7 @@ describe("class |InterpState|", () => {
       let state2 = state.clone();
       /** @param {number[]} bc */
       function run(bc) {
-        return state2.run(InterpState.formatBytecode(bc));
+        state2.run(InterpState.formatBytecode(bc));
       }
       expect(state2.currPos.value).to.equal(state.currPos.value);
       run([op.ACCEPT_N, 0]);
@@ -294,7 +294,7 @@ describe("class |InterpState|", () => {
     /** @param {number[]} bc */
     function run(bc) {
       const fbc = InterpState.formatBytecode(bc);
-      return state.clone().run(fbc)
+      return state.clone().run(fbc).changes
         ? InterpState.flattenBc(fbc)
         : null;
     }
@@ -383,7 +383,7 @@ describe("class |InterpState|", () => {
           op.SOURCE_MAP_LABEL_PUSH, 0, 0, 0,
           op.SOURCE_MAP_LABEL_POP,
         ]
-      ))).to.equal(false);
+      )).changes).to.equal(false);
     });
 
     it("equality tests", () => {
