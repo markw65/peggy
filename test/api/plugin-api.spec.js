@@ -4,6 +4,7 @@ const chai = require("chai");
 const { SourceNode } = require("source-map");
 const peg = require("../../lib/peg");
 const op = require("../../lib/compiler/opcodes");
+const { optimizeBytecode } = require("../../lib/compiler/passes/optimize-bytecode");
 
 const expect = chai.expect;
 
@@ -194,6 +195,10 @@ describe("plugin API", () => {
             bc[5] = 1;
           }
 
+          const index = config.passes.generate.indexOf(optimizeBytecode);
+          if (index >= 0) {
+            config.passes.generate.splice(index, 1);
+          }
           config.passes.generate.splice(1, 0, munge);
         },
       };
