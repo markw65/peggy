@@ -12,7 +12,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   const flattenBc = InterpState.flattenBc;
   describe("combine consecutive ifs", () => {
     it("conditional => op.IF no swap", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_CHAR_CLASS, 0, [
             [op.PUSH_EMPTY_ARRAY],
@@ -40,7 +40,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
     it("conditional => op.IF swapped", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_CHAR_CLASS, 0, [
             [op.PUSH_NULL],
@@ -69,7 +69,7 @@ describe("compiler pass |optimizeBytecode|", () => {
     });
 
     it("conditional => op.IF_ERROR no swap", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING, 0, [
             [op.PUSH_FAILED],
@@ -97,7 +97,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
     it("conditional => op.IF_ERROR swapped", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING, 0, [
             [op.PUSH_NULL],
@@ -126,7 +126,7 @@ describe("compiler pass |optimizeBytecode|", () => {
     });
 
     it("conditional => op.IF_NOT_ERROR no swap", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING_IC, 0, [
             [op.PUSH_FAILED],
@@ -154,7 +154,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
     it("conditional => op.IF_NOT_ERROR swapped", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING_IC, 0, [
             [op.PUSH_NULL],
@@ -184,7 +184,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("combine consecutive ifs with second else empty", () => {
     it("conditional => op.IF no swap", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_CHAR_CLASS, 0, [
             [op.PUSH_CURR_POS],
@@ -215,7 +215,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
     it("conditional => op.IF swapped", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_CHAR_CLASS, 0, [
             [op.PUSH_NULL],
@@ -261,11 +261,11 @@ describe("compiler pass |optimizeBytecode|", () => {
           ], [],
         ],
       ]);
-      expect(optimizeBlock(codes, "combine-with-IF")).to.deep.equal(codes);
+      expect(optimizeBlock(null, codes, "combine-with-IF")).to.deep.equal(codes);
     });
 
     it("conditional => op.IF_ERROR no swap", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING, 0, [
             [op.RULE, 0],
@@ -296,7 +296,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
     it("conditional => op.IF_ERROR swapped", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING, 0, [
             [op.PUSH_NULL],
@@ -328,7 +328,7 @@ describe("compiler pass |optimizeBytecode|", () => {
     });
 
     it("conditional => op.IF_NOT_ERROR no swap", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING_IC, 0, [
             [op.PUSH_FAILED],
@@ -359,7 +359,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]));
     });
     it("conditional => op.IF_NOT_ERROR swapped", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING_IC, 0, [
             [op.RULE, 0],
@@ -392,14 +392,14 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("Optimize FAIL opcodes", () => {
     it("to PUSH_FAILURE when SILENT_FAILS is on", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.SILENT_FAILS_ON,
         op.FAIL, 1,
         op.SILENT_FAILS_OFF,
       ], "fail-in-silent").includes(op.PUSH_FAILED)).to.equal(true);
     });
     it("to NOP when discarded and SILENT_FAILS is on", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.SILENT_FAILS_ON,
         op.FAIL, 1,
         op.POP,
@@ -409,7 +409,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("Optimize PUSH/POP pairs", () => {
     it("with separate POPs", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_NULL,
         op.PUSH_UNDEFINED,
         op.PUSH_EMPTY_ARRAY,
@@ -421,7 +421,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ], "dead-push-pops")).to.deep.equal([]);
     });
     it("with POP_N", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_NULL,
         op.PUSH_UNDEFINED,
         op.PUSH_EMPTY_ARRAY,
@@ -430,7 +430,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ], "dead-push-pops")).to.deep.equal([]);
     });
     it("NIP/POP => POP", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_FAILED,
         op.PUSH_NULL,
         op.PUSH_CURR_POS,
@@ -440,14 +440,14 @@ describe("compiler pass |optimizeBytecode|", () => {
       ], "dead-nip-pops")).to.deep.equal([]);
     });
     it("PUSH/NIP => POP/PUSH", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_FAILED,
         op.PUSH_NULL,
         op.NIP,
       ], "dead-push-nips")).to.deep.equal([op.PUSH_NULL]);
     });
     it("PLUCK n/POP => POP_N/POP", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_FAILED,
         op.PUSH_NULL,
         op.PUSH_EMPTY_ARRAY,
@@ -456,14 +456,14 @@ describe("compiler pass |optimizeBytecode|", () => {
       ], "dead-pluck-popn")).to.deep.equal([]);
     });
     it("PLUCK 1/POP => POP", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_FAILED,
         op.PLUCK, 1, 1, 0,
         op.POP,
       ], "dead-pluck-pop1")).to.deep.equal([]);
     });
     it("PLUCK 0/POP => PUSH_NULL/POP", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_FAILED,
         op.PLUCK, 0, 1, 0,
         op.POP,
@@ -472,7 +472,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("kill useless POP_CURR_POS", () => {
     it("when currPos is unchanged", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_CURR_POS,
         op.FAIL, 1,
         op.POP,
@@ -480,7 +480,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ], "unchanged-curr-pos").includes(op.POP_CURR_POS)).to.equal(false);
     });
     it("when currPos subsequently killed", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.PUSH_CURR_POS,
         op.ACCEPT_N, 1,
         op.PUSH_CURR_POS,
@@ -502,7 +502,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("WHILE_NOT_FAILED", () => {
     it("is removed when always fails", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [op.PUSH_FAILED],
         [op.WHILE_NOT_ERROR, [
           [op.POP],
@@ -512,7 +512,7 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]), "dead-while-loop")).to.deep.equal([]);
     });
     it("is hoisted when one if branch always fails", () => {
-      expect(optimizeBlock(flattenBc([
+      expect(optimizeBlock(null, flattenBc([
         [
           op.MATCH_STRING_IC, 0, [
             [op.ACCEPT_N, 1],
@@ -555,7 +555,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("SILENT_FAILS", () => {
     it("are killed when nested", () => {
-      expect(optimizeBlock([
+      expect(optimizeBlock(null, [
         op.SILENT_FAILS_ON,
         op.SILENT_FAILS_ON,
         op.RULE, 1,
@@ -570,7 +570,7 @@ describe("compiler pass |optimizeBytecode|", () => {
   });
   describe("logging", () => {
     const spy = jest.spyOn(console, "log");
-    expect(optimizeBlock([
+    expect(optimizeBlock(null, [
       op.PUSH_NULL,
       op.POP,
     ], "logging", true)).to.deep.equal([]);
