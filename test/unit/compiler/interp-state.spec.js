@@ -10,6 +10,7 @@ const expect = chai.expect;
 /**
  * @typedef {import("../../../lib/compiler/interp-state").FlatOpcodes} FlatOpcodes
  * @typedef {import("../../../lib/compiler/interp-state").FormattedBytecode} FormattedBytecode
+ * @typedef {import("../../../lib/compiler/interp-state").FormattedElement} FormattedElement
  */
 
 describe("class |InterpState|", () => {
@@ -247,6 +248,76 @@ describe("class |InterpState|", () => {
         }, but got 3`
       );
     });
+    describe("calls to fixupForStackRemoval", () => {
+      it("throws an error for NIP with depth 0", () => {
+        expect(() => InterpState.fixupForStackRemoval([op.NIP], 0)).to.throw(
+          Error
+        );
+      });
+      it("throws an error for CALL with an arg of depth", () => {
+        expect(() => InterpState.fixupForStackRemoval(
+          [op.CALL, 0, 0, 1, 5], 5
+        )).to.throw(
+          Error
+        );
+      });
+      it("throws an error for PLUCK with an arg of depth", () => {
+        expect(() => InterpState.fixupForStackRemoval(
+          [op.PLUCK, 0, 1, 5], 5
+        )).to.throw(
+          Error
+        );
+      });
+      it("throws an error for APPEND with depth 0", () => {
+        expect(() => InterpState.fixupForStackRemoval([op.APPEND], 0)).to.throw(
+          Error
+        );
+      });
+      it("throws an error for LOAD_SAVED_POS with an arg of depth", () => {
+        expect(() => InterpState.fixupForStackRemoval(
+          [op.LOAD_SAVED_POS, 5], 5
+        )).to.throw(
+          Error
+        );
+      });
+      it("ignores LOAD_SAVED_POS when an arg <= depth", () => {
+        expect(() => InterpState.fixupForStackRemoval(
+          [op.LOAD_SAVED_POS, 2], 5
+        )).to.not.throw();
+      });
+      it("throws an error for IF_LT_DYNAMIC with an arg of depth", () => {
+        expect(() => InterpState.fixupForStackRemoval(
+          [op.IF_LT_DYNAMIC, 5, [], []], 5
+        )).to.throw(
+          Error
+        );
+      });
+      it("throws an error for IF_GE_DYNAMIC with an arg of 0", () => {
+        expect(() => InterpState.fixupForStackRemoval(
+          [op.IF_GE_DYNAMIC, 5, [], []], 0
+        )).to.throw(
+          Error
+        );
+      });
+      it("converts pop_1 to nop", () => {
+        /** @type {FormattedElement} */
+        const pop_n = [op.POP_N, 1];
+        expect(() => InterpState.fixupForStackRemoval(
+          pop_n, 0
+        )).to.not.throw();
+        expect(pop_n.length).to.equal(0);
+      });
+    });
+    it("pushPops throws an error given an invalid bytecode", () => {
+      expect(() => InterpState.pushPops(
+        /** @type{FormattedElement} */(/** @type {unknown} */([-1])),
+        () => null,
+        () => null,
+        () => null
+      )).to.throw(
+        Error
+      );
+    });
   });
 
   describe("consistency", () => {
@@ -384,6 +455,16 @@ describe("class |InterpState|", () => {
           op.SOURCE_MAP_LABEL_POP,
         ]
       )).changes).to.equal(false);
+    });
+
+    it("pushPops gets called with WRAP", () => {
+      const push = jest.fn();
+      const pop = jest.fn();
+      const inspect = jest.fn();
+      InterpState.pushPops([op.WRAP, 3], inspect, pop, push);
+      expect(inspect.mock.calls.length).to.be.equal(3);
+      expect(pop.mock.calls.length).to.be.equal(1);
+      expect(push.mock.calls.length).to.be.equal(1);
     });
 
     it("equality tests", () => {

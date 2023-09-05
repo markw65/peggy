@@ -3,13 +3,35 @@
 
 const chai = require("chai");
 const op = require("../../../../lib/compiler/opcodes");
-const { optimizeBlock } = require("../../../../lib/compiler/passes/optimize-bytecode");
+const { optimizeBlock, deadSlotRemoval } = require("../../../../lib/compiler/passes/optimize-bytecode");
 const { InterpState } = require("../../../../lib/compiler/interp-state");
 
 const expect = chai.expect;
 
 describe("compiler pass |optimizeBytecode|", () => {
   const flattenBc = InterpState.flattenBc;
+  describe("throws on invalid bytecode", () => {
+    it("unbalanced stack", () => {
+      expect(() => deadSlotRemoval("unbalanced", [
+        [op.MATCH_CHAR_CLASS, 0, [
+          [op.PUSH_EMPTY_ARRAY],
+          [op.PUSH_EMPTY_ARRAY],
+        ], [
+          [op.PUSH_EMPTY_ARRAY],
+        ]],
+      ])).to.throw(Error, "unbalanced: Stack mismatch");
+    });
+    it("pops more than pushes", () => {
+      expect(() => deadSlotRemoval("pops", [
+        [op.CALL, 0, 1, 0],
+      ])).to.throw(Error, "pops: Too many pops");
+    });
+    it("inspects an element below the bottom of the stack", () => {
+      expect(() => deadSlotRemoval("inspect", [
+        [op.PLUCK, 0, 1, 1],
+      ])).to.throw(Error, "inspect: Looking at a stack slot below the bottom of the stack");
+    });
+  });
   describe("combine consecutive ifs", () => {
     it("conditional => op.IF no swap", () => {
       expect(optimizeBlock(null, flattenBc([
@@ -568,12 +590,104 @@ describe("compiler pass |optimizeBytecode|", () => {
       ]);
     });
   });
+  describe("TEXT", () => {
+    it("is killed by a following instruction that POPs", () => {
+      expect(optimizeBlock(null, [
+        op.PUSH_UNDEFINED,
+        op.PUSH_CURR_POS,
+        op.ACCEPT_N, 2,
+        op.POP,
+        op.TEXT,
+        op.CALL, 0, 1, 1, 1,
+      ], "nested-silent")).to.be.deep.equal([
+        op.PUSH_UNDEFINED,
+        op.ACCEPT_N, 2,
+        op.POP,
+        op.CALL, 0, 0, 1, 0,
+      ]);
+    });
+    it("commutes with NIP", () => {
+      expect(optimizeBlock(null, [
+        op.PUSH_UNDEFINED,
+        op.PUSH_CURR_POS,
+        op.TEXT,
+        op.NIP,
+      ], "nested-silent", false, true)).to.be.deep.equal([
+        op.PUSH_CURR_POS,
+        op.TEXT,
+      ]);
+    });
+  });
+  describe("WRAP", () => {
+    it("single element WRAP commutes with NIP", () => {
+      expect(optimizeBlock(null, [
+        op.PUSH_UNDEFINED,
+        op.PUSH_EMPTY_STRING,
+        op.WRAP, 1,
+        op.NIP,
+      ], "nested-silent", false, true)).to.be.deep.equal([
+        op.PUSH_EMPTY_STRING,
+        op.WRAP, 1,
+      ]);
+    });
+  });
+
   describe("logging", () => {
-    const spy = jest.spyOn(console, "log");
-    expect(optimizeBlock(null, [
-      op.PUSH_NULL,
-      op.POP,
-    ], "logging", true)).to.deep.equal([]);
-    expect(spy.mock.calls.length).to.be.equal(4);
+    it("optimizeBlock logs when requested", () => {
+      const spy = jest.spyOn(console, "log");
+      expect(optimizeBlock(null, [
+        op.PUSH_NULL,
+        op.POP,
+      ], "logging", true)).to.deep.equal([]);
+      expect(spy.mock.calls.length).to.be.equal(4);
+      jest.resetAllMocks();
+    });
+  });
+
+  describe("traverseCondState coverage", () => {
+    it("cover all the variations on the visitor returning false", () => {
+      const bcs1 = flattenBc([
+        [op.MATCH_CHAR_CLASS, 1, [
+          [op.MATCH_CHAR_CLASS, 2, [
+            [op.RULE, 0],
+          ], [
+            [op.FAIL, 1],
+          ]],
+        ], [
+          [op.MATCH_CHAR_CLASS, 2, [
+            [op.RULE, 0],
+          ], [
+            [op.RULE, 1],
+          ]],
+        ]],
+        [op.IF_NOT_ERROR, [
+          [op.ACCEPT_N, 2],
+        ], [
+          [op.ACCEPT_N, 3],
+        ]],
+      ]);
+      expect(optimizeBlock(null, bcs1, "traverseCondState")).to.deep.equal(bcs1);
+      const bcs2 = flattenBc([
+        [op.MATCH_CHAR_CLASS, 1, [
+          [op.MATCH_CHAR_CLASS, 2, [
+            [op.RULE, 0],
+          ], [
+            [op.RULE, 1],
+          ]],
+        ], [
+          [op.MATCH_CHAR_CLASS, 2, [
+            [op.RULE, 0],
+          ], [
+            [op.RULE, 1],
+          ]],
+        ]],
+        [op.IF_NOT_ERROR, [
+          [op.ACCEPT_N, 2],
+        ], [
+          [op.ACCEPT_N, 3],
+        ]],
+      ]);
+      expect(optimizeBlock(null, bcs2, "traverseCondState")).to.deep.equal(bcs2);
+    });
   });
 });
