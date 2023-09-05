@@ -567,11 +567,10 @@ describe("compiler pass |optimizeBytecode|", () => {
                 ],
               ],
             ]],
+            [op.POP],
           ], [
-            [op.PUSH_FAILED],
           ],
         ],
-        [op.POP],
       ]));
     });
   });
