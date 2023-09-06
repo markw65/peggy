@@ -21,6 +21,16 @@ describe("compiler pass |optimizeBytecode|", () => {
         ]],
       ])).to.throw(Error, "unbalanced: Stack mismatch");
     });
+    it("unbalanced SILENT_FAILS", () => {
+      expect(() => deadSlotRemoval("unbalanced", [
+        [op.MATCH_CHAR_CLASS, 0, [
+          [op.SILENT_FAILS_ON],
+          [op.PUSH_EMPTY_ARRAY],
+        ], [
+          [op.PUSH_EMPTY_STRING],
+        ]],
+      ])).to.throw(Error, "unbalanced: Mismatched SILENT_FAILS");
+    });
     it("pops more than pushes", () => {
       expect(() => deadSlotRemoval("pops", [
         [op.CALL, 0, 1, 0],
@@ -643,6 +653,36 @@ describe("compiler pass |optimizeBytecode|", () => {
     });
   });
 
+  describe("deadSlotRemoval coverage", () => {
+    it("then pushes with empty if", () => {
+      // Not normally seen because InterpState.interp adds a POP to
+      // balance the if.
+      expect(deadSlotRemoval("empty-else", [
+        [op.MATCH_ANY, [
+          [op.PUSH_NULL],
+        ], []],
+      ])).to.equal(false);
+    });
+    it("nested SILENT_FAILS", () => {
+      // Not normally seen because InterpState.interp kills the
+      // nested ones.
+      expect(deadSlotRemoval("nested-silent-fails", [
+        [op.SILENT_FAILS_ON],
+        [op.RULE, 0],
+        [op.SILENT_FAILS_ON],
+      ])).to.equal(false);
+      expect(deadSlotRemoval("nested-silent-fails", [
+        [op.SILENT_FAILS_ON],
+        [op.SILENT_FAILS_ON],
+        [op.SILENT_FAILS_OFF],
+        [op.MATCH_ANY, [
+          [op.SILENT_FAILS_OFF],
+        ], [
+          [op.SILENT_FAILS_OFF],
+        ]],
+      ])).to.equal(false);
+    });
+  });
   describe("traverseCondState coverage", () => {
     it("cover all the variations on the visitor returning false", () => {
       const bcs1 = flattenBc([
