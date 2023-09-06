@@ -508,7 +508,7 @@ describe("compiler pass |optimizeBytecode|", () => {
         op.PUSH_CURR_POS,
         op.ACCEPT_N, 1,
         op.PUSH_CURR_POS,
-        op.ACCEPT_N, 1,
+        op.RULE, 1,
         op.POP,
         op.POP_CURR_POS,
         op.FAIL, 1,
