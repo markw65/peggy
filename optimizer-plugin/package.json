@@ -1,10 +1,10 @@
 {
   "name": "@markw65/peggy-optimizer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Peggy plugin to produce optimized js",
   "main": "build/index.js",
   "scripts": {
-    "prepack":"npm run rollup",
+    "prepack": "npm run rollup",
     "rollup": "rollup --config rollup.config.mjs",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
